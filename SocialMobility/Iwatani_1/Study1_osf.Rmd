@@ -1,0 +1,227 @@
+if (!interactive()) {
+  args <- commandArgs(trailingOnly = TRUE)
+  if (length(args) == 1) stop("Both input and output file are required!")
+  if (length(args) == 0) {
+    INPUT_FILE  <- "Iwatani_1_original.csv"
+    OUTPUT_FILE <- "Iwatani_1_results_original.csv"
+  } else {
+    INPUT_FILE  <- args[1]
+    OUTPUT_FILE <- args[2]
+  }
+} else {
+  INPUT_FILE  <- "SocialMobility/Iwatani_1/Iwatani_1_original.csv"
+  OUTPUT_FILE <- "SocialMobility/Iwatani_1/results/Iwatani_1_results_original.csv"
+}
+
+```{r, tidy}
+
+#install.packages("devtools")
+library(devtools)
+#install_github("dgrtwo/broom")
+library(broom)
+broom::tidy(ad_aov)
+```
+
+```{r, Packages}
+rm(list = ls())
+Sys.setenv(LANGUAGE="en")
+#source("C:/Users/siwatani/rstudio/anovakun_486.txt")
+library(dplyr)
+library(ggplot2)
+library(ggsignif)
+library(outliers)
+library(reghelper)
+library(gridExtra)
+library(psych)
+library(ltm)
+library(sjPlot)
+library(lme4)
+library(lmerTest)
+library(lavaan)
+library(readr)
+library(car)
+library(tidyr)
+library(semTools)
+options(scipen=20)
+```
+
+```{r, Data and Variables}
+#data_download
+gen_data <- read_csv("SocialMobility/Iwatani_1/gen_data/Iwatani_1_gen_bootstrap_ind.csv")
+#data <- read_csv("SocialMobility/Iwatani_1/Iwatani_1_original.csv")
+
+#data_use <- data
+data_use <- gen_data
+
+#data_use <- INPUT_FILE
+
+data_lw <- na.omit(data_use) 
+
+#Age
+describe(data_lw$age)
+data_lw <- data_lw %>% 
+  filter(age >3)
+table(data_lw$age)
+
+#Female
+table(data_lw$female)
+
+#Age
+describe(data_lw$age)
+
+#Number of participants in each condition
+table(data_lw$estimation_condition)
+
+#data_reverse
+#data_reverse
+data_lw <- data_lw %>% 
+  mutate(low_rep_est3=7-low_rep_est3,
+         low_rep_est_all=7-low_rep_est_all)
+
+#Reputational damage estimation
+data_lw<-data_lw %>% 
+  mutate(low_rep_est = ( low_rep_est1+low_rep_est2+low_rep_est3
+                         +low_rep_est4+low_rep_est5+low_rep_est6)/6)
+
+#α(Reputational damage estimation)
+data_estimation <- data_lw %>% filter(estimation_condition == 1)
+data_alpha_estimation <- data_estimation[, c("low_rep_est1","low_rep_est2","low_rep_est3",
+                                             "low_rep_est4","low_rep_est5","low_rep_est6")]
+cronbach.alpha(data_alpha_estimation)
+describe(data_estimation$low_rep_est)
+
+#α(Participants’ evaluation)
+data_actual <- data_lw %>% filter(estimation_condition == 0)
+data_alpha_actual <- data_actual[, c("low_rep_est1","low_rep_est2","low_rep_est3",
+                                     "low_rep_est4","low_rep_est5","low_rep_est6")]
+cronbach.alpha(data_alpha_actual)
+describe(data_actual$low_rep_est)
+
+#addiction
+data_alpha_addiction <- data_lw[, c("addiction1","addiction2","addiction3","addiction4",
+                                    "addiction5","addiction6","addiction7","addiction8")]
+cronbach.alpha(data_alpha_addiction)
+data_lw<-data_lw %>% 
+  mutate(addiction = ( addiction1+addiction2+addiction3+addiction4+
+                       addiction5+addiction6+addiction7+addiction8)/8)
+describe(data_lw$addiction)
+
+#relational_mobility
+data_alpha_rm <- data_lw[, c("rm1","rm2","rm3","rm4","rm5","rm6"
+                             ,"rm7","rm8","rm9","rm10","rm11","rm12")]
+cronbach.alpha(data_alpha_rm)
+data_lw<-data_lw %>% 
+  mutate(rm = ( rm1+rm2+rm3+rm4+rm5+rm6+
+                rm7+rm8+rm9+rm10+rm11+rm12)/12)
+describe(data_lw$rm)
+
+#Data (female and male)
+data_lw_gender_analysis <- data_lw %>% 
+  filter(female<3)
+
+#Centering
+data_c <- as.data.frame(scale(data_lw))
+data_c_gender_analysis <- as.data.frame(scale(data_lw_gender_analysis))
+
+#Data(ignorer condition)
+data_estimation <- data_lw %>% filter(estimation_condition == 1)
+data_estimation_c <- as.data.frame(scale(data_estimation))
+data_estimation_gender_analysis <- data_lw_gender_analysis %>% filter(estimation_condition == 1)
+data_estimation_c_gender_analysis <- as.data.frame(scale(data_estimation_gender_analysis))
+```
+
+```{r, Hypothesis1 and 2}
+mediation.model <- ' 
+             # mediator
+             low_rep_est ~ a*rm
+             addiction ~ b*low_rep_est 
+           
+             # direct effect
+             addiction ~  c*rm
+
+           # indirect effect (a*b)
+             ab := a*b
+
+           # total effect
+             total := c + (a*b)'
+
+fit <- sem(mediation.model, data = data_estimation_c, meanstructure = TRUE,
+           se = "boot", bootstrap = 5000)
+```
+
+```{r, Hypothesis1 and 2}
+
+summary(fit, fit.measures=T, standardized=T, ci=TRUE)
+```
+
+```{r, Hypothesis1 and 2 Correlation}
+cor1 <- cor.test(data_estimation$rm,data_estimation$low_rep_est)
+cor2 <- cor.test(data_estimation$low_rep_est,data_estimation$addiction)
+cor3 <- cor.test(data_estimation$rm,data_estimation$addiction)
+```
+
+```{r,Hypothesis 1 and 2 (additional)}
+#adding age and gender as control variables
+mediation.model2 <- ' 
+             # mediator
+             low_rep_est ~ a*rm
+             addiction ~ b*low_rep_est 
+           
+             # direct effect
+             addiction ~  c*rm
+
+           # indirect effect (a*b)
+             ab := a*b
+
+           # total effect
+             total := c + (a*b)
+
+           # covariates
+             addiction ~ age + female'
+
+fit2 <- sem(mediation.model2, data = data_estimation_c_gender_analysis, meanstructure = TRUE,
+           se = "boot", bootstrap = 5000)
+
+
+```
+
+```{r,Hypothesis 1 and 2 (additional)}
+summary(fit2, fit.measures=T, standardized=T, ci=TRUE)
+```
+
+```{r, Hypothesis3}
+resultx_1<-lm(low_rep_est ~ rm*estimation_condition,data=data_c)
+summary(resultx_1)
+```
+
+```{r, Hypothesis3 (additional)}
+#adding age and gender as control variables
+resultx_2<-lm(low_rep_est ~ rm*estimation_condition+age+female,data=data_c_gender_analysis)
+summary(resultx_2)
+```
+
+```{r,Explore}
+
+result_reviwer1<-lm(addiction ~ rm+low_rep_est*age+female,data=data_estimation_c_gender_analysis)
+summary(result_reviwer1)
+```
+
+```{r, Export File}
+
+results <- bind_rows(
+  sem1 = tidy(fit),
+  sem2 = tidy(fit2),
+  cor.test1 = tidy(cor1),
+  cor.test2 = tidy(cor2),
+  cor.test3 = tidy(cor3),
+  lm1 = tidy(resultx_1),
+  lm2 = tidy(resultx_2),
+  lm3 = tidy(result_reviwer1),
+  .id = "model"
+)
+
+#write_csv(results, "SocialMobility/Iwatani_1/results/Iwatani_1_results_original.csv")
+write_csv(results, "SocialMobility/Iwatani_1/gen_data/results/Iwatani_1_results_bootstrap_ind.csv")
+#write_csv(results, OUTPUT_FILE)
+
+```

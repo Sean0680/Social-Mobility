@@ -1,0 +1,313 @@
+
+```{r,Package}
+rm(list = ls())
+Sys.setenv(LANGUAGE="en")
+#source("C:/Users/siwatani/rstudio/anovakun_486.txt")
+library(dplyr)
+library(ggplot2)
+library(car)
+library(ggsignif)
+library(dplyr)
+library(outliers)
+library(reghelper)
+library(psych)
+library(ltm)
+library(e1071)
+library(lme4)
+library(lmerTest)
+library(lavaan)
+library(sjPlot)
+library(semTools)
+library(semPlot)
+library(bruceR)
+library(predict3d)
+library(broom)
+broom::tidy(ad_aov)
+```
+
+```{r, Power Analysis}
+epsilon0<-0.05
+epsilonA<-0.01
+d<-6*(6+1)/2-(8+6)
+a<-0.05
+nobs<-1065
+findRMSEApower(rmsea0=epsilon0,rmseaA=epsilonA,n=nobs,
+               df=d,alpha=a)
+```
+
+```{r,Variables}
+#Data
+data_line <- 
+  read.csv("SocialMobility/Iwatani_2/Iwatani_2_original.csv")
+data_line <- na.omit(data_line)
+
+#Female
+table(data_line$female)
+
+#Age
+describe(data_line$age)
+
+#Reputation damage estimation
+data_alpha1 <-subset (data_line,
+                      select=c(low_rep_est1,low_rep_est2,low_rep_est3,
+                               low_rep_est4,low_rep_est5)) 
+cronbach.alpha(data_alpha1) 
+data_line<-data_line %>% mutate(low_rep_est =
+                                  ((low_rep_est1+low_rep_est2+low_rep_est3+
+                                    low_rep_est4+low_rep_est5)/5))
+describe(data_line$low_rep_est)
+
+#Participants’ evaluation
+data_alpha2 <-subset (data_line,
+                      select=c(low_rep1,low_rep2,low_rep3,low_rep4,low_rep5)) 
+cronbach.alpha(data_alpha2) 
+data_line<-data_line %>% 
+  mutate(low_rep =((low_rep1+low_rep2+low_rep3+low_rep4+low_rep5)/5))
+describe(data_line$low_rep)
+
+#Social media addiction
+data_alpha3 <-subset (data_line,
+                      select=c(addiction1,addiction2,addiction3,addiction4,
+                               addiction5,addiction6,addiction7,addiction8))
+cronbach.alpha(data_alpha3)
+data_line<-data_line %>% 
+  mutate(addiction = ((addiction1+addiction2+addiction3+addiction4
+                       +addiction5+addiction6+addiction7+addiction8)/8))
+describe(data_line$addiction)
+
+#Extroversion
+cor.test(data_line$extroversion1,data_line$extroversion2)
+data_line<-data_line %>% 
+  mutate(extroversion = ((extroversion1+extroversion2)/2))
+describe(data_line$extroversion)
+
+#Motivation to expand social network 
+data_alpha5 <-subset (data_line,
+                      select=c(network1,network2,network3,network4))
+cronbach.alpha(data_alpha5)
+data_line<-data_line %>% 
+  mutate(network = ((network1+network2+network3+network4)/4))
+describe(data_line$network)
+
+#Loneliness 
+data_alpha6 <-subset (data_line,
+                      select=c(lonely1,lonely2,lonely3,
+                               lonely4,lonely5,lonely6))
+cronbach.alpha(data_alpha6)
+data_line<-data_line %>% 
+  mutate(lonely = ((lonely1+lonely2+lonely3+lonely4+lonely5+lonely6)/6))
+describe(data_line$lonely)
+
+#Relational mobility
+data_alpha7 <-subset (data_line,
+                      select=c(rm1,rm2,rm3,rm4,rm5,rm6,
+                               rm7,rm8,rm9,rm10,rm11,rm12))
+cronbach.alpha(data_alpha7)
+data_line<-data_line %>% 
+  mutate(rm = ((rm1+rm2+rm3+rm4+rm5+rm6+
+                rm7+rm8+rm9+rm10+rm11+rm12)/12))
+describe(data_line$rm)
+
+#Data(male and female)
+data_line_gender_analysis <- data_line %>% 
+  filter(data_line$sex==1)
+
+#Data(centered)
+data_c <- as.data.frame(scale(data_line))
+data_c_gender_analysis <- as.data.frame(scale(data_line))
+
+```
+
+```{r,Hypothesis4}
+model1<-'lonely~rm
+         network~rm
+         extroversion~rm
+         low_rep_est~rm
+         addiction~lonely
+         addiction~network
+         addiction~extroversion
+         addiction~low_rep_est'
+fit<-sem(model=model1,
+         data=data_line,
+         estimator="ML")
+summary(object=fit,fit.measure=TRUE)
+
+```
+
+```{r,Correlation}
+cor1 <- cor.test(data_line$addiction,data_line$extroversion)
+cor2 <- cor.test(data_line$addiction,data_line$network)
+cor3 <- cor.test(data_line$addiction,data_line$lonely)
+cor4 <- cor.test(data_line$rm,data_line$lonely)
+
+```
+
+```{r,Hypothesis4 additional}
+model1<-'network~rm
+         addiction~network
+         low_rep_est~rm
+         addiction~low_rep_est'
+fit2 <-sem(model=model1,
+         data=data_line,
+         estimator="ML")
+summary(object=fit,fit.measure=TRUE)
+#Not Standarized
+parameterEstimates(fit,ci=TRUE)
+#Standarized
+fitstand <- standardizedSolution(fit)
+
+
+##Analysis2(control variables included)
+model1_gender_analysis<-'network~rm
+         addiction~network
+         low_rep_est~rm
+         addiction~low_rep_est
+         addiction~age+1'
+fit3<-sem(model=model1_gender_analysis,
+         data=data_line_gender_analysis,
+         estimator="ML")
+summary(object=fit3,fit.measure=TRUE)
+#Not Standarized
+parameterEstimates(fit_gender_analysis,ci=TRUE)
+#Standarized
+fitstand2 <- standardizedSolution(fit_gender_analysis)
+```
+
+```{r,Hypothesis4 additional2}
+#https://rdrr.io/cran/bruceR/man/PROCESS.html
+set.seed(111)
+#addiction
+proc1 <- PROCESS(
+  data=data_c,
+  y = "addiction1",
+  x = "rm",
+  meds = c("network","low_rep_est"),
+  nsim=1000)
+
+#addiction
+proc2 <- PROCESS(
+  data=data_c_gender_analysis,
+  y = "addiction",
+  x = "rm",
+  meds = c("network","low_rep_est"),
+  covs = c("age", "sex"),
+  nsim=1000)
+
+```
+
+```{r,Hypothesis4 additional3}
+model1<-'extroversion~rm
+         low_rep_est~rm
+         addiction~extroversion
+         addiction~low_rep_est'
+fit4 <-sem(model=model1,
+         data=data_line,
+         estimator="ML")
+summary(object=fit4,fit.measure=TRUE)
+
+#Analysis(control variables included)
+model1_gender_analysis<-'extroversion~rm
+         low_rep_est~rm
+         addiction~extroversion
+         addiction~low_rep_est
+         addiction~age+1'
+fit5 <-sem(model=model1_gender_analysis,
+         data=data_line_gender_analysis,
+         estimator="ML")
+summary(object=fit5,fit.measure=TRUE)
+
+```
+
+```{r,Hypothesis4 additional4}
+model1<-'lonely~rm
+         low_rep_est~rm
+         addiction~lonely
+         addiction~low_rep_est'
+fit6 <-sem(model=model1,
+         data=data_line,
+         estimator="ML")
+summary(object=fit6,fit.measure=TRUE)
+
+#Analysis(control variables included)
+model1_gender_analysis<-'lonely~rm
+         low_rep_est~rm
+         addiction~lonely
+         addiction~low_rep_est
+         addiction~age+1'
+fit7 <-sem(model=model1_gender_analysis,
+         data=data_line_gender_analysis,
+         estimator="ML")
+summary(object=fit7,fit.measure=TRUE)
+```
+
+```{r,Hypothesis3}
+#Data
+data_lowr1 <- data_line %>%
+  pivot_longer(cols      = c(low_rep, low_rep_est),
+               names_to  = "estimation",
+               values_to = "low_rep_glm")
+tapply(data_lowr1$low_rep_glm,data_lowr1$estimation,mean)
+data_lowr1 <- data_lowr1 %>% 
+  mutate(estimation = case_when(estimation == "low_rep_est"  ~ "1",
+                                estimation == "low_rep"  ~ "0"))
+data_lowr1$estimation<-as.numeric(data_lowr1$estimation)
+data_lowr1_c <- as.data.frame(scale(data_lowr1))
+
+#GLMM
+resultx_1<-lm(low_rep_glm ~ rm*estimation+(1|id), 
+                data=data_lowr1_c)
+summary(resultx_1)
+```
+
+```{r,Hypothesis3_additional}
+#Data
+data_lowr1_gender_analysis <- data_line_gender_analysis %>%
+  pivot_longer(cols      = c(low_rep, low_rep_est),
+               names_to  = "estimation",
+               values_to = "low_rep_glm")
+tapply(data_lowr1_gender_analysis$low_rep_glm,data_lowr1_gender_analysis$estimation,mean)
+data_lowr1_gender_analysis <- data_lowr1_gender_analysis %>% 
+  mutate(estimation = case_when(estimation == "low_rep_est"  ~ "1",
+                                estimation == "low_rep"  ~ "0"))
+data_lowr1_gender_analysis$estimation<-as.numeric(data_lowr1_gender_analysis$estimation)
+data_lowr1_c_gender_analysis <- as.data.frame(scale(data_lowr1_gender_analysis))
+
+#GLMM
+resultx_1_gender_analysis<-lm(low_rep_glm ~ rm*estimation+(1|id)+age+1, 
+                data=data_lowr1_c_gender_analysis)
+summary(resultx_1_gender_analysis)
+```
+
+```{r,Explore}
+result_reviwer1<-lm(addiction ~ rm+low_rep_est*age+network*age+1,data=data_c_gender_analysis)
+summary(result_reviwer1)
+
+interactions::sim_slopes(model = result_reviwer1,
+                         pred = network,
+                         modx = age)
+```
+
+```{r,Export Data}
+results <- bind_rows(
+  sem1 = tidy(fit),
+  sem2 = tidy(fit2),
+  sem3 = tidy(fit3),
+  sem4 = tidy(fit4),
+  sem5 = tidy(fit5),
+  sem6 = tidy(fit6),
+  sem7 = tidy(fit7),
+  
+  cor.test1 = tidy(cor1),
+  cor.test2 = tidy(cor2),
+  cor.test3 = tidy(cor3),
+  cor.test4 = tidy(cor4),
+  
+  lm1 = tidy(resultx_1),
+  lm2 = tidy(resultx_1_gender_analysis),
+  lm3 = tidy(result_reviwer1),
+  
+  .id = "model"
+)
+
+write_csv(results, "SocialMobility/Iwatani_2/results/Iwatani_2_results_original.csv")
+```

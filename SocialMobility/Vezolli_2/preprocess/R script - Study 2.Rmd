@@ -1,0 +1,1190 @@
+
+```{r setup environment}
+# Set knitting options
+knitr::opts_chunk$set(echo = TRUE,warning = FALSE,error = FALSE,message = FALSE)
+```
+
+```{r}
+# Read data
+library(readxl)
+library(broom)
+# Data preprocessing and Descriptives
+library(pastecs);library(epiDisplay)
+library(psych) # EFA
+library(paran) # Parallel analysis
+library(gmodels)
+library(rstatix)
+library(dplyr)
+library(descr)
+library(car)
+
+# Plots and tables formatting
+library(ggplot2);library(ggthemes);library(gridExtra)
+library(gtsummary)
+library(ggcorrplot)
+library(ggpubr)
+library(sjPlot)
+library(apaTables)
+library(spaa)
+
+# CFA
+library(lavaan)
+library(lavaanPlot)
+library(semPlot)
+library(semTools)
+```
+
+```{r load data}
+# Load Uk
+data_use <- Vezolli_2_complete_original
+
+split_df <- split(data_use, data_use$country)
+
+uk <- split_df$uk
+ita <- split_df$ita
+za <- split_df$za
+```
+# Data preprocessing and examination of the psychometric properties
+## Opinions on and reactions to inequality  
+```{r}
+# Computing the reverse
+
+uk <-  dplyr::mutate(Between.Unfairness = 6 - Between.Fairness,.data = uk)
+ita <-  dplyr::mutate(Between.Unfairness = 6 - Between.Fairness,.data = ita)
+za <-  dplyr::mutate(Between.Unfairness = 6 - Between.Fairness,.data = za)
+
+```
+
+## Social mobility
+```{r  REVERSE CODE social mobility, results='hide'  }
+# UK
+uk$Social.mobility_2_r <-  recode(uk$Social.mobility_2, '1=5; 2=4; 3=3; 4=2; 5=1') 
+uk$Social.mobility_3_r <-  recode(uk$Social.mobility_3, '1=5; 2=4; 3=3; 4=2; 5=1') 
+# Italy
+ita$Social.mobility_2_r <-  recode(ita$Social.mobility_2, '1=5; 2=4; 3=3; 4=2; 5=1') 
+ita$Social.mobility_3_r <-  recode(ita$Social.mobility_3, '1=5; 2=4; 3=3; 4=2; 5=1') 
+# South Africa
+za$Social.mobility_2_r <-  recode(za$Social.mobility_2, '1=5; 2=4; 3=3; 4=2; 5=1') 
+za$Social.mobility_3_r <-  recode(za$Social.mobility_3, '1=5; 2=4; 3=3; 4=2; 5=1') 
+
+```
+
+```{r ita PCA social mobility}
+set.seed(123)
+ita.soc.mob.efa <- principal(ita[,c("Social.mobility_1","Social.mobility_2_r","Social.mobility_3_r")], nfactors=3, rotate="none")
+
+# Extract 1 factor
+set.seed(123)
+ita.soc.mob.efa <- principal(ita[,c("Social.mobility_1","Social.mobility_2_r","Social.mobility_3_r")], nfactors=1, rotate="none")
+```
+
+```{r uk PCA social mobility}
+set.seed(123)
+uk.soc.mob.efa <- principal(uk[,c("Social.mobility_1","Social.mobility_2_r","Social.mobility_3_r")], nfactors=3, rotate="none")
+
+# Extract 1 factor
+set.seed(123)
+uk.soc.mob.efa <- principal(uk[,c("Social.mobility_1","Social.mobility_2_r","Social.mobility_3_r")], nfactors=1, rotate="none")
+```
+
+```{r za PCA social mobility}
+set.seed(123)
+za.soc.mob.efa <- principal(za[,c("Social.mobility_1","Social.mobility_2_r","Social.mobility_3_r")], nfactors=3, rotate="none")
+
+# Extract 1 factor
+set.seed(123)
+za.soc.mob.efa <- principal(za[,c("Social.mobility_1","Social.mobility_2_r","Social.mobility_3_r")], nfactors=1, rotate="none")
+```
+
+```{r COMPUTE SCORE social mobility}
+uk <- mutate(uk,social.mobility=(Social.mobility_1+Social.mobility_2_r+Social.mobility_3_r)/3)
+ita <- mutate(ita,social.mobility=(Social.mobility_1+Social.mobility_2_r+Social.mobility_3_r)/3)
+za <- mutate(za,social.mobility=(Social.mobility_1+Social.mobility_2_r+Social.mobility_3_r)/3)
+```
+## Zero-sum beliefs  
+```{r ita PCA zero sum}
+set.seed(123)
+ita.soc.mob.efa <- principal(ita[,c("Zero.sum_1","Zero.sum_2","Zero.sum_3")], nfactors=3, rotate="none")
+
+# Extract 1 factor
+set.seed(123)
+ita.soc.mob.efa <- principal(ita[,c("Zero.sum_1","Zero.sum_2","Zero.sum_3")], nfactors=1, rotate="none")
+```
+
+```{r uk PCA zero sum}
+set.seed(123)
+uk.zerosum.efa <- principal(uk[,c("Zero.sum_1","Zero.sum_2","Zero.sum_3")], nfactors=3, rotate="none")
+
+# Extract 1 factor
+set.seed(123)
+uk.zerosum.efa <- principal(uk[,c("Zero.sum_1","Zero.sum_2","Zero.sum_3")], nfactors=1, rotate="none")
+```
+
+```{r za PCA zero sum}
+set.seed(123)
+za.soc.mob.efa <- principal(za[,c("Zero.sum_1","Zero.sum_2","Zero.sum_3")], nfactors=3, rotate="none")
+
+# Extract 1 factor
+set.seed(123)
+za.soc.mob.efa <- principal(za[,c("Zero.sum_1","Zero.sum_2","Zero.sum_3")], nfactors=1, rotate="none")
+```
+
+```{r COMPUTE SCORE zero sum}
+uk <- mutate(uk,zero.sum=(Zero.sum_1+Zero.sum_2+Zero.sum_3)/3)
+ita <- mutate(ita,zero.sum=(Zero.sum_1+Zero.sum_2+Zero.sum_3)/3)
+za <- mutate(za,zero.sum=(Zero.sum_1+Zero.sum_2+Zero.sum_3)/3)
+```
+## System-Legitimizing Ideology Scale (SLIS; Day & Norton, 2020)  
+```{r ita SLIS PCA}
+# Build complete model
+set.seed(1234)
+ita.efa.slis <- principal(ita[,c("Meritocracy_1","Meritocracy_2","Meritocracy_3","Meritocracy_4","Meritocracy_5","Meritocracy_6")], nfactors=6, rotate="none")
+
+# Build model with one factor
+set.seed(1234)
+ita.efa.slis <- principal(ita[,c("Meritocracy_1","Meritocracy_2","Meritocracy_3","Meritocracy_4","Meritocracy_5","Meritocracy_6")], nfactors=1, rotate="none")
+```
+
+```{r uk SLIS PCA}
+# Build complete model
+set.seed(1234)
+uk.efa.slis <- principal(uk[,c("Meritocracy_1","Meritocracy_2","Meritocracy_3","Meritocracy_4","Meritocracy_5","Meritocracy_6")], nfactors=6, rotate="none")
+
+# Build model with one factor
+set.seed(1234)
+uk.efa.slis <- principal(uk[,c("Meritocracy_1","Meritocracy_2","Meritocracy_3","Meritocracy_4","Meritocracy_5","Meritocracy_6")], nfactors=1, rotate="none")
+```
+
+```{r za SLIS PCA}
+# Build complete model
+set.seed(1234)
+za.efa.slis <- principal(za[,c("Meritocracy_1","Meritocracy_2","Meritocracy_3","Meritocracy_4","Meritocracy_5","Meritocracy_6")], nfactors=6, rotate="none")
+
+# Build model with one factor
+set.seed(1234)
+za.efa.slis <- principal(za[,c("Meritocracy_1","Meritocracy_2","Meritocracy_3","Meritocracy_4","Meritocracy_5","Meritocracy_6")], nfactors=1, rotate="none")
+```
+
+```{r SLIS compute score}
+uk <- mutate(uk,meritocracy=(Meritocracy_1+Meritocracy_2+Meritocracy_3+Meritocracy_4+Meritocracy_5+Meritocracy_6)/6)
+ita <- mutate(ita,meritocracy=(Meritocracy_1+Meritocracy_2+Meritocracy_3+Meritocracy_4+Meritocracy_5+Meritocracy_6)/6)
+za <- mutate(za,meritocracy=(Meritocracy_1+Meritocracy_2+Meritocracy_3+Meritocracy_4+Meritocracy_5+Meritocracy_6)/6)
+```
+## Short Social Dominance Orientation (S-SDO; Pratto et al., 2013)  
+```{r  REVERSE CODE sdo, results='hide'  }
+# UK
+uk$Social.Dominance_1_r <-  recode(uk$Social.Dominance_1, '1=5; 2=4; 3=3; 4=2; 5=1') 
+uk$Social.Dominance_3_r <-  recode(uk$Social.Dominance_3, '1=5; 2=4; 3=3; 4=2; 5=1') 
+# Italy
+ita$Social.Dominance_1_r <-  recode(ita$Social.Dominance_1, '1=5; 2=4; 3=3; 4=2; 5=1') 
+ita$Social.Dominance_3_r <-  recode(ita$Social.Dominance_3, '1=5; 2=4; 3=3; 4=2; 5=1') 
+# South Africa
+za$Social.Dominance_1_r <-  recode(za$Social.Dominance_1, '1=5; 2=4; 3=3; 4=2; 5=1') 
+za$Social.Dominance_3_r <-  recode(za$Social.Dominance_3, '1=5; 2=4; 3=3; 4=2; 5=1') 
+
+```
+
+```{r ita SDO PCA}
+# Build complete model
+set.seed(1234)
+ita.efa.SDO <- principal(ita[,c("Social.Dominance_1_r","Social.Dominance_2","Social.Dominance_3_r","Social.Dominance_4")], nfactors=4, rotate="none")
+
+# Build model with one factor
+set.seed(1234)
+ita.efa.SDO <- principal(ita[,c("Social.Dominance_1_r","Social.Dominance_2","Social.Dominance_3_r","Social.Dominance_4")], nfactors=1, rotate="none")
+```
+
+```{r uk SDO PCA}
+# Build complete model
+set.seed(1234)
+uk.efa.SDO <- principal(uk[,c("Social.Dominance_1_r","Social.Dominance_2","Social.Dominance_3_r","Social.Dominance_4")], nfactors=4, rotate="none")
+
+# Build model with one factor
+set.seed(1234)
+uk.efa.SDO <- principal(uk[,c("Social.Dominance_1_r","Social.Dominance_2","Social.Dominance_3_r","Social.Dominance_4")], nfactors=1, rotate="none")
+```
+
+```{r za SDO PCA}
+# Build complete model
+set.seed(1234)
+za.efa.SDO <- principal(za[,c("Social.Dominance_1_r","Social.Dominance_2","Social.Dominance_3_r","Social.Dominance_4")], nfactors=4, rotate="none")
+
+# Build model with one factors
+set.seed(1234)
+za.efa.SDO <- principal(za[,c("Social.Dominance_1_r","Social.Dominance_2","Social.Dominance_3_r","Social.Dominance_4")], nfactors=1, rotate="none")
+```
+
+```{r SDO compute score}
+uk <- mutate(uk,social.dominance=(Social.Dominance_1_r+Social.Dominance_2+Social.Dominance_3_r+Social.Dominance_4)/4)
+ita <- mutate(ita,social.dominance=(Social.Dominance_1_r+Social.Dominance_2+Social.Dominance_3_r+Social.Dominance_4)/4)
+za <- mutate(za,social.dominance=(Social.Dominance_1_r+Social.Dominance_2+Social.Dominance_3_r+Social.Dominance_4)/4)
+```
+## Economic system justification (ESJ; Jost & Thompson, 2000)  
+```{r ESJ items reverse coding}
+# Item 2 (There are many reasons to think that the economic system is unfair)
+uk$ESJ_2_r <-  recode(uk$ESJ_2, '1=5; 2=4; 3=3; 4=2; 5=1') 
+ita$ESJ_2_r <-  recode(ita$ESJ_2, '1=5; 2=4; 3=3; 4=2; 5=1') 
+za$ESJ_2_r <-  recode(za$ESJ_2, '1=5; 2=4; 3=3; 4=2; 5=1') 
+
+# Item 5 (Economic differences in the society reflect an illegitimate distribution of resources)
+uk$ESJ_5_r <-  recode(uk$ESJ_5, '1=5; 2=4; 3=3; 4=2; 5=1') 
+ita$ESJ_5_r <-  recode(ita$ESJ_5, '1=5; 2=4; 3=3; 4=2; 5=1') 
+za$ESJ_5_r <-  recode(za$ESJ_5, '1=5; 2=4; 3=3; 4=2; 5=1') 
+
+# Item 8 (Equal distribution of resources is a possibility for our society)
+uk$ESJ_8_r <-  recode(uk$ESJ_8, '1=5; 2=4; 3=3; 4=2; 5=1') 
+ita$ESJ_8_r <-  recode(ita$ESJ_8, '1=5; 2=4; 3=3; 4=2; 5=1') 
+za$ESJ_8_r <-  recode(za$ESJ_8, '1=5; 2=4; 3=3; 4=2; 5=1') 
+
+# Item 9 (There are no inherent differences between rich and poor; it is purely a matter of the circumstances into which you are born)
+uk$ESJ_9_r <-  recode(uk$ESJ_9, '1=5; 2=4; 3=3; 4=2; 5=1') 
+ita$ESJ_9_r <-  recode(ita$ESJ_9, '1=5; 2=4; 3=3; 4=2; 5=1') 
+za$ESJ_9_r <-  recode(za$ESJ_9, '1=5; 2=4; 3=3; 4=2; 5=1') 
+
+# Item 10 (It is unfair to have an economic system that produces extreme wealth and extreme poverty at the same time)
+uk$ESJ_10_r <-  recode(uk$ESJ_10, '1=5; 2=4; 3=3; 4=2; 5=1') 
+ita$ESJ_10_r <-  recode(ita$ESJ_10, '1=5; 2=4; 3=3; 4=2; 5=1') 
+za$ESJ_10_r <-  recode(za$ESJ_10, '1=5; 2=4; 3=3; 4=2; 5=1') 
+
+# Item 11 (If people wanted to change the economic system to make things equal, they could)
+uk$ESJ_11_r <-  recode(uk$ESJ_11, '1=5; 2=4; 3=3; 4=2; 5=1') 
+ita$ESJ_11_r <-  recode(ita$ESJ_11, '1=5; 2=4; 3=3; 4=2; 5=1') 
+za$ESJ_11_r <-  recode(za$ESJ_11, '1=5; 2=4; 3=3; 4=2; 5=1') 
+```
+
+```{r ita ESJ PCA}
+# Build complete model
+set.seed(1234)
+ita.efa.esj <- principal(ita[,c("ESJ_1","ESJ_2_r","ESJ_3","ESJ_4","ESJ_5_r","ESJ_6","ESJ_7","ESJ_8_r","ESJ_10_r","ESJ_12")], nfactors=10, rotate="none")
+
+# Build model with three factors
+set.seed(1234)
+ita.efa.esj <- principal(ita[,c("ESJ_1","ESJ_2_r","ESJ_3","ESJ_4","ESJ_5_r","ESJ_6","ESJ_7","ESJ_8_r","ESJ_10_r","ESJ_12")], nfactors=3, rotate="varimax")
+```
+
+```{r uk ESJ PCA}
+# Build complete model
+set.seed(1234)
+uk.efa.esj <- principal(uk[,c("ESJ_1","ESJ_2_r","ESJ_3","ESJ_4","ESJ_5_r","ESJ_6","ESJ_7","ESJ_8_r","ESJ_10_r","ESJ_12")], nfactors=10, rotate="none")
+
+# Build model with three factors
+set.seed(1234)
+uk.efa.esj <- principal(uk[,c("ESJ_1","ESJ_2_r","ESJ_3","ESJ_4","ESJ_5_r","ESJ_6","ESJ_7","ESJ_8_r","ESJ_10_r","ESJ_12")], nfactors=2, rotate="varimax")
+```
+
+```{r za ESJ PCA}
+# Build complete model
+set.seed(1234)
+za.efa.esj <- principal(za[,c("ESJ_1","ESJ_2_r","ESJ_3","ESJ_4","ESJ_5_r","ESJ_6","ESJ_7","ESJ_8_r","ESJ_10_r","ESJ_12")], nfactors=10, rotate="none")
+
+# Build model with three factors
+set.seed(1234)
+za.efa.esj <- principal(za[,c("ESJ_1","ESJ_2_r","ESJ_3","ESJ_4","ESJ_5_r","ESJ_6","ESJ_7","ESJ_8_r","ESJ_10_r","ESJ_12")], nfactors=3, rotate="varimax")
+```
+
+```{r ESJ compute overall score}
+# Uk
+uk <- mutate(uk,eco.system.just=(ESJ_1 + ESJ_2_r + ESJ_3 + ESJ_4 + ESJ_5_r + ESJ_6 + ESJ_7 + ESJ_8_r + ESJ_10_r + ESJ_12)/10)
+# Ita
+ita <- mutate(ita,eco.system.just=(ESJ_1 + ESJ_2_r + ESJ_3 + ESJ_4 + ESJ_5_r + ESJ_6 + ESJ_7 + ESJ_8_r + ESJ_10_r + ESJ_12)/10)
+# Za
+za <- mutate(za,eco.system.just=(ESJ_1 + ESJ_2_r + ESJ_3 + ESJ_4 + ESJ_5_r + ESJ_6 + ESJ_7 + ESJ_8_r + ESJ_10_r + ESJ_12)/10)
+```
+## Trust in institutions  
+```{r uk RECODE}
+uk$Trust.Inst.IMF[uk$Trust.Inst.IMF==6] <- NA
+uk$Trust.Inst.UN[uk$Trust.Inst.UN==6] <- NA
+uk$Trust.Inst.WHO[uk$Trust.Inst.WHO==6] <- NA
+uk$Trust.Inst.WB[uk$Trust.Inst.WB==6] <- NA
+```
+
+```{r ita RECODE}
+ita$Trust.Inst.IMF[ita$Trust.Inst.IMF==6] <- NA
+ita$Trust.Inst.UN[ita$Trust.Inst.UN==6] <- NA
+ita$Trust.Inst.WHO[ita$Trust.Inst.WHO==6] <- NA
+ita$Trust.Inst.WB[ita$Trust.Inst.WB==6] <- NA
+```
+
+```{r za RECODE}
+za$Trust.Inst.IMF[za$Trust.Inst.IMF==6] <- NA
+za$Trust.Inst.UN[za$Trust.Inst.UN==6] <- NA
+za$Trust.Inst.WHO[za$Trust.Inst.WHO==6] <- NA
+za$Trust.Inst.WB[za$Trust.Inst.WB==6] <- NA
+```
+
+```{r ita institution trust PCA}
+# Build complete model
+set.seed(1234)
+ita.efa.trust <- principal(ita[,c("Trust.Inst.IMF","Trust.Inst.UN", "Trust.Inst.WHO", "Trust.Inst.WB")], nfactors=4, rotate="none")
+
+# Build model with three factors
+set.seed(1234)
+ita.efa.esj <- principal(ita[,c("Trust.Inst.IMF","Trust.Inst.UN", "Trust.Inst.WHO", "Trust.Inst.WB")], nfactors=1, rotate="none")
+```
+
+```{r uk institution trust PCA}
+# Build complete model
+set.seed(1234)
+uk.efa.trust <- principal(uk[,c("Trust.Inst.IMF","Trust.Inst.UN", "Trust.Inst.WHO", "Trust.Inst.WB")], nfactors=4, rotate="none")
+
+# Build model with three factors
+set.seed(1234)
+uk.efa.esj <- principal(uk[,c("Trust.Inst.IMF","Trust.Inst.UN", "Trust.Inst.WHO", "Trust.Inst.WB")], nfactors=1, rotate="none")
+```
+
+```{r za institution trust PCA}
+# Build complete model
+set.seed(1234)
+za.efa.trust <- principal(za[,c("Trust.Inst.IMF","Trust.Inst.UN", "Trust.Inst.WHO", "Trust.Inst.WB")], nfactors=4, rotate="none")
+
+# Build model with three factors
+set.seed(1234)
+za.efa.esj <- principal(za[,c("Trust.Inst.IMF","Trust.Inst.UN", "Trust.Inst.WHO", "Trust.Inst.WB")], nfactors=1, rotate="none")
+```
+
+```{r}
+ita <- mutate(ita, trust.institution = (Trust.Inst.IMF+Trust.Inst.UN+Trust.Inst.WHO+Trust.Inst.WB)/4)
+
+uk <- mutate(uk, trust.institution = (Trust.Inst.IMF+Trust.Inst.UN+Trust.Inst.WHO+Trust.Inst.WB)/4)
+
+za <- mutate(za, trust.institution = (Trust.Inst.IMF+Trust.Inst.UN+Trust.Inst.WHO+Trust.Inst.WB)/4)
+
+```
+## Self-identification with own country and world population
+```{r uk IDENTIFICATION COUNTRY preprocess - step 1, results='hide'}
+# Save the original variable
+uk$IOS.Country_1_orig <- uk$IOS.Country_1
+uk$IOS.Country_2_orig <- uk$IOS.Country_2
+uk$IOS.Country_3_orig <- uk$IOS.Country_3
+uk$IOS.Country_4_orig <- uk$IOS.Country_4
+uk$IOS.Country_5_orig <- uk$IOS.Country_5
+uk$IOS.Country_6_orig <- uk$IOS.Country_6
+uk$IOS.Country_7_orig <- uk$IOS.Country_7
+
+uk$IOS.Country_1 <- ifelse(uk$IOS.Country_1_orig=="Off",0,1)
+uk$IOS.Country_2 <- ifelse(uk$IOS.Country_2_orig=="Off",0,2)
+uk$IOS.Country_3 <- ifelse(uk$IOS.Country_3_orig=="Off",0,3)
+uk$IOS.Country_4 <- ifelse(uk$IOS.Country_4_orig=="Off",0,4)
+uk$IOS.Country_5 <- ifelse(uk$IOS.Country_5_orig=="Off",0,5)
+uk$IOS.Country_6 <- ifelse(uk$IOS.Country_6_orig=="Off",0,6)
+uk$IOS.Country_7 <- ifelse(uk$IOS.Country_7_orig=="Off",0,7)
+```
+
+```{r uk IDENTIFICATION WORLD preprocess - step 1, results='hide'}
+# Save the original variable
+uk$IOS.World_1_orig <- uk$IOS.World_1
+uk$IOS.World_2_orig <- uk$IOS.World_2
+uk$IOS.World_3_orig <- uk$IOS.World_3
+uk$IOS.World_4_orig <- uk$IOS.World_4
+uk$IOS.World_5_orig <- uk$IOS.World_5
+uk$IOS.World_6_orig <- uk$IOS.World_6
+uk$IOS.World_7_orig <- uk$IOS.World_7
+
+uk$IOS.World_1 <- ifelse(uk$IOS.World_1_orig=="Off",0,1)
+uk$IOS.World_2 <- ifelse(uk$IOS.World_2_orig=="Off",0,2)
+uk$IOS.World_3 <- ifelse(uk$IOS.World_3_orig=="Off",0,3)
+uk$IOS.World_4 <- ifelse(uk$IOS.World_4_orig=="Off",0,4)
+uk$IOS.World_5 <- ifelse(uk$IOS.World_5_orig=="Off",0,5)
+uk$IOS.World_6 <- ifelse(uk$IOS.World_6_orig=="Off",0,6)
+uk$IOS.World_7 <- ifelse(uk$IOS.World_7_orig=="Off",0,7)
+```
+
+```{r ita IDENTIFICATION COUNTRY preprocess - step 1, results='hide'}
+# Save the original variable
+ita$IOS.Country_1_orig <- ita$IOS.Country_1
+ita$IOS.Country_2_orig <- ita$IOS.Country_2
+ita$IOS.Country_3_orig <- ita$IOS.Country_3
+ita$IOS.Country_4_orig <- ita$IOS.Country_4
+ita$IOS.Country_5_orig <- ita$IOS.Country_5
+ita$IOS.Country_6_orig <- ita$IOS.Country_6
+ita$IOS.Country_7_orig <- ita$IOS.Country_7
+
+ita$IOS.Country_1 <- ifelse(ita$IOS.Country_1_orig=="Off",0,1)
+ita$IOS.Country_2 <- ifelse(ita$IOS.Country_2_orig=="Off",0,2)
+ita$IOS.Country_3 <- ifelse(ita$IOS.Country_3_orig=="Off",0,3)
+ita$IOS.Country_4 <- ifelse(ita$IOS.Country_4_orig=="Off",0,4)
+ita$IOS.Country_5 <- ifelse(ita$IOS.Country_5_orig=="Off",0,5)
+ita$IOS.Country_6 <- ifelse(ita$IOS.Country_6_orig=="Off",0,6)
+ita$IOS.Country_7 <- ifelse(ita$IOS.Country_7_orig=="Off",0,7)
+```
+
+```{r ita IDENTIFICATION WORLD preprocess - step 1, results='hide'}
+# Save the original variable
+ita$IOS.World_1_orig <- ita$IOS.World_1
+ita$IOS.World_2_orig <- ita$IOS.World_2
+ita$IOS.World_3_orig <- ita$IOS.World_3
+ita$IOS.World_4_orig <- ita$IOS.World_4
+ita$IOS.World_5_orig <- ita$IOS.World_5
+ita$IOS.World_6_orig <- ita$IOS.World_6
+ita$IOS.World_7_orig <- ita$IOS.World_7
+
+ita$IOS.World_1 <- ifelse(ita$IOS.World_1_orig=="Off",0,1)
+ita$IOS.World_2 <- ifelse(ita$IOS.World_2_orig=="Off",0,2)
+ita$IOS.World_3 <- ifelse(ita$IOS.World_3_orig=="Off",0,3)
+ita$IOS.World_4 <- ifelse(ita$IOS.World_4_orig=="Off",0,4)
+ita$IOS.World_5 <- ifelse(ita$IOS.World_5_orig=="Off",0,5)
+ita$IOS.World_6 <- ifelse(ita$IOS.World_6_orig=="Off",0,6)
+ita$IOS.World_7 <- ifelse(ita$IOS.World_7_orig=="Off",0,7)
+```
+
+```{r za IDENTIFICATION COUNTRY preprocess - step 1, results='hide'}
+# Save the original variable
+za$IOS.Country_1_orig <- za$IOS.Country_1
+za$IOS.Country_2_orig <- za$IOS.Country_2
+za$IOS.Country_3_orig <- za$IOS.Country_3
+za$IOS.Country_4_orig <- za$IOS.Country_4
+za$IOS.Country_5_orig <- za$IOS.Country_5
+za$IOS.Country_6_orig <- za$IOS.Country_6
+za$IOS.Country_7_orig <- za$IOS.Country_7
+
+za$IOS.Country_1 <- ifelse(za$IOS.Country_1_orig=="Off",0,1)
+za$IOS.Country_2 <- ifelse(za$IOS.Country_2_orig=="Off",0,2)
+za$IOS.Country_3 <- ifelse(za$IOS.Country_3_orig=="Off",0,3)
+za$IOS.Country_4 <- ifelse(za$IOS.Country_4_orig=="Off",0,4)
+za$IOS.Country_5 <- ifelse(za$IOS.Country_5_orig=="Off",0,5)
+za$IOS.Country_6 <- ifelse(za$IOS.Country_6_orig=="Off",0,6)
+za$IOS.Country_7 <- ifelse(za$IOS.Country_7_orig=="Off",0,7)
+```
+
+```{r za IDENTIFICATION WORLD preprocess - step 1, results='hide'}
+# Save the original variable
+za$IOS.World_1_orig <- za$IOS.World_1
+za$IOS.World_2_orig <- za$IOS.World_2
+za$IOS.World_3_orig <- za$IOS.World_3
+za$IOS.World_4_orig <- za$IOS.World_4
+za$IOS.World_5_orig <- za$IOS.World_5
+za$IOS.World_6_orig <- za$IOS.World_6
+za$IOS.World_7_orig <- za$IOS.World_7
+
+za$IOS.World_1 <- ifelse(za$IOS.World_1_orig=="Off",0,1)
+za$IOS.World_2 <- ifelse(za$IOS.World_2_orig=="Off",0,2)
+za$IOS.World_3 <- ifelse(za$IOS.World_3_orig=="Off",0,3)
+za$IOS.World_4 <- ifelse(za$IOS.World_4_orig=="Off",0,4)
+za$IOS.World_5 <- ifelse(za$IOS.World_5_orig=="Off",0,5)
+za$IOS.World_6 <- ifelse(za$IOS.World_6_orig=="Off",0,6)
+za$IOS.World_7 <- ifelse(za$IOS.World_7_orig=="Off",0,7)
+```
+
+```{r uk IDENTIFICATION COUNTRY preprocess - step 2 , results='hide'}
+uk <- mutate(uk, identif.country = IOS.Country_1+
+                                   IOS.Country_2+
+                                   IOS.Country_3+
+                                   IOS.Country_4+
+                                   IOS.Country_5+
+                                   IOS.Country_6+
+                                   IOS.Country_7)
+
+```
+
+```{r ita IDENTIFICATION COUNTRY preprocess - step 2 , results='hide'}
+ita <- mutate(ita, identif.country = IOS.Country_1+
+                                   IOS.Country_2+
+                                   IOS.Country_3+
+                                   IOS.Country_4+
+                                   IOS.Country_5+
+                                   IOS.Country_6+
+                                   IOS.Country_7)
+
+```
+
+```{r za IDENTIFICATION COUNTRY preprocess - step 2 , results='hide'}
+za <- mutate(za, identif.country = IOS.Country_1+
+                                   IOS.Country_2+
+                                   IOS.Country_3+
+                                   IOS.Country_4+
+                                   IOS.Country_5+
+                                   IOS.Country_6+
+                                   IOS.Country_7)
+
+```
+
+```{r uk IDENTIFICATION WORLD preprocess - step 2 , results='hide'}
+uk <- mutate(uk, identif.world = IOS.World_1+
+                                 IOS.World_2+
+                                 IOS.World_3+
+                                 IOS.World_4+
+                                 IOS.World_5+
+                                 IOS.World_6+
+                                 IOS.World_7)
+
+```
+
+```{r ita IDENTIFICATION WORLD preprocess - step 2 , results='hide'}
+ita <- mutate(ita, identif.world = IOS.World_1+
+                                 IOS.World_2+
+                                 IOS.World_3+
+                                 IOS.World_4+
+                                 IOS.World_5+
+                                 IOS.World_6+
+                                 IOS.World_7)
+
+```
+
+```{r za IDENTIFICATION WORLD preprocess - step 2 , results='hide'}
+za <- mutate(za, identif.world = IOS.World_1+
+                                 IOS.World_2+
+                                 IOS.World_3+
+                                 IOS.World_4+
+                                 IOS.World_5+
+                                 IOS.World_6+
+                                 IOS.World_7)
+
+```
+## Subjective SES
+```{r uk SUBJECTIVE SES preprocess - step 1, results='hide'}
+# Save the original variable
+uk$Subjective.SES_1_orig <- uk$Subjective.SES_1
+uk$Subjective.SES_2_orig <- uk$Subjective.SES_2
+uk$Subjective.SES_3_orig <- uk$Subjective.SES_3
+uk$Subjective.SES_4_orig <- uk$Subjective.SES_4
+uk$Subjective.SES_5_orig <- uk$Subjective.SES_5
+uk$Subjective.SES_6_orig <- uk$Subjective.SES_6
+uk$Subjective.SES_7_orig <- uk$Subjective.SES_7
+uk$Subjective.SES_8_orig <- uk$Subjective.SES_8
+uk$Subjective.SES_9_orig <- uk$Subjective.SES_9
+uk$Subjective.SES_10_orig <- uk$Subjective.SES_10
+
+uk$Subjective.SES_1 <- ifelse(uk$Subjective.SES_1_orig=="Off",0,1)
+uk$Subjective.SES_2 <- ifelse(uk$Subjective.SES_2_orig=="Off",0,2)
+uk$Subjective.SES_3 <- ifelse(uk$Subjective.SES_3_orig=="Off",0,3)
+uk$Subjective.SES_4 <- ifelse(uk$Subjective.SES_4_orig=="Off",0,4)
+uk$Subjective.SES_5 <- ifelse(uk$Subjective.SES_5_orig=="Off",0,5)
+uk$Subjective.SES_6 <- ifelse(uk$Subjective.SES_6_orig=="Off",0,6)
+uk$Subjective.SES_7 <- ifelse(uk$Subjective.SES_7_orig=="Off",0,7)
+uk$Subjective.SES_8 <- ifelse(uk$Subjective.SES_8_orig=="Off",0,8)
+uk$Subjective.SES_9 <- ifelse(uk$Subjective.SES_9_orig=="Off",0,9)
+uk$Subjective.SES_10 <- ifelse(uk$Subjective.SES_10_orig=="Off",0,10)
+```
+
+```{r ita SUBJECTIVE SES preprocess - step 1, results='hide'}
+# Save the original variable
+ita$Subjective.SES_1_orig <- ita$Subjective.SES_1
+ita$Subjective.SES_2_orig <- ita$Subjective.SES_2
+ita$Subjective.SES_3_orig <- ita$Subjective.SES_3
+ita$Subjective.SES_4_orig <- ita$Subjective.SES_4
+ita$Subjective.SES_5_orig <- ita$Subjective.SES_5
+ita$Subjective.SES_6_orig <- ita$Subjective.SES_6
+ita$Subjective.SES_7_orig <- ita$Subjective.SES_7
+ita$Subjective.SES_8_orig <- ita$Subjective.SES_8
+ita$Subjective.SES_9_orig <- ita$Subjective.SES_9
+ita$Subjective.SES_10_orig <- ita$Subjective.SES_10
+
+ita$Subjective.SES_1 <- ifelse(ita$Subjective.SES_1_orig=="Off",0,1)
+ita$Subjective.SES_2 <- ifelse(ita$Subjective.SES_2_orig=="Off",0,2)
+ita$Subjective.SES_3 <- ifelse(ita$Subjective.SES_3_orig=="Off",0,3)
+ita$Subjective.SES_4 <- ifelse(ita$Subjective.SES_4_orig=="Off",0,4)
+ita$Subjective.SES_5 <- ifelse(ita$Subjective.SES_5_orig=="Off",0,5)
+ita$Subjective.SES_6 <- ifelse(ita$Subjective.SES_6_orig=="Off",0,6)
+ita$Subjective.SES_7 <- ifelse(ita$Subjective.SES_7_orig=="Off",0,7)
+ita$Subjective.SES_8 <- ifelse(ita$Subjective.SES_8_orig=="Off",0,8)
+ita$Subjective.SES_9 <- ifelse(ita$Subjective.SES_9_orig=="Off",0,9)
+ita$Subjective.SES_10 <- ifelse(ita$Subjective.SES_10_orig=="Off",0,10)
+```
+
+```{r za SUBJECTIVE SES preprocess - step 1, results='hide'}
+# Save the original variable
+za$Subjective.SES_1_orig <- za$Subjective.SES_1
+za$Subjective.SES_2_orig <- za$Subjective.SES_2
+za$Subjective.SES_3_orig <- za$Subjective.SES_3
+za$Subjective.SES_4_orig <- za$Subjective.SES_4
+za$Subjective.SES_5_orig <- za$Subjective.SES_5
+za$Subjective.SES_6_orig <- za$Subjective.SES_6
+za$Subjective.SES_7_orig <- za$Subjective.SES_7
+za$Subjective.SES_8_orig <- za$Subjective.SES_8
+za$Subjective.SES_9_orig <- za$Subjective.SES_9
+za$Subjective.SES_10_orig <- za$Subjective.SES_10
+
+za$Subjective.SES_1 <- ifelse(za$Subjective.SES_1_orig=="Off",0,1)
+za$Subjective.SES_2 <- ifelse(za$Subjective.SES_2_orig=="Off",0,2)
+za$Subjective.SES_3 <- ifelse(za$Subjective.SES_3_orig=="Off",0,3)
+za$Subjective.SES_4 <- ifelse(za$Subjective.SES_4_orig=="Off",0,4)
+za$Subjective.SES_5 <- ifelse(za$Subjective.SES_5_orig=="Off",0,5)
+za$Subjective.SES_6 <- ifelse(za$Subjective.SES_6_orig=="Off",0,6)
+za$Subjective.SES_7 <- ifelse(za$Subjective.SES_7_orig=="Off",0,7)
+za$Subjective.SES_8 <- ifelse(za$Subjective.SES_8_orig=="Off",0,8)
+za$Subjective.SES_9 <- ifelse(za$Subjective.SES_9_orig=="Off",0,9)
+za$Subjective.SES_10 <- ifelse(za$Subjective.SES_10_orig=="Off",0,10)
+```
+
+```{r uk SUBJECTIVE SES preprocess - step 2 , results='hide'}
+uk <- mutate(uk, subjective.ses = Subjective.SES_1+
+                                   Subjective.SES_2+
+                                   Subjective.SES_3+
+                                   Subjective.SES_4+
+                                   Subjective.SES_5+
+                                   Subjective.SES_6+
+                                   Subjective.SES_7+
+                                   Subjective.SES_8+
+                                   Subjective.SES_9+
+                                   Subjective.SES_10)
+
+```
+
+```{r ita SUBJECTIVE SES preprocess - step 2 , results='hide'}
+ita <- mutate(ita, subjective.ses = Subjective.SES_1+
+                                   Subjective.SES_2+
+                                   Subjective.SES_3+
+                                   Subjective.SES_4+
+                                   Subjective.SES_5+
+                                   Subjective.SES_6+
+                                   Subjective.SES_7+
+                                   Subjective.SES_8+
+                                   Subjective.SES_9+
+                                   Subjective.SES_10)
+
+```
+
+```{r za SUBJECTIVE SES preprocess - step 2 , results='hide'}
+za <- mutate(za, subjective.ses = Subjective.SES_1+
+                                   Subjective.SES_2+
+                                   Subjective.SES_3+
+                                   Subjective.SES_4+
+                                   Subjective.SES_5+
+                                   Subjective.SES_6+
+                                   Subjective.SES_7+
+                                   Subjective.SES_8+
+                                   Subjective.SES_9+
+                                   Subjective.SES_10)
+
+```
+## Working status
+```{r uk CLEAN work status}
+uk$Work.Status_1_orig <- uk$Work.Status_1
+uk$Work.Status_2_orig <- uk$Work.Status_2
+uk$Work.Status_3_orig <- uk$Work.Status_3
+uk$Work.Status_4_orig <- uk$Work.Status_4
+uk$Work.Status_5_orig <- uk$Work.Status_5
+uk$Work.Status_6_orig <- uk$Work.Status_6
+uk$Work.Status_7_orig <- uk$Work.Status_7
+uk$Work.Status_8_orig <- uk$Work.Status_8
+uk$Work.Status_9_orig <- uk$Work.Status_9
+
+uk$Work.Status_1 <- ifelse(is.na(uk$Work.Status_1_orig),0,1)
+uk$Work.Status_2 <- ifelse(is.na(uk$Work.Status_2_orig),0,2)
+uk$Work.Status_3 <- ifelse(is.na(uk$Work.Status_3_orig),0,3)
+uk$Work.Status_4 <- ifelse(is.na(uk$Work.Status_4_orig),0,4)
+uk$Work.Status_5 <- ifelse(is.na(uk$Work.Status_5_orig),0,5)
+uk$Work.Status_6 <- ifelse(is.na(uk$Work.Status_6_orig),0,6)
+uk$Work.Status_7 <- ifelse(is.na(uk$Work.Status_7_orig),0,7)
+uk$Work.Status_8 <- ifelse(is.na(uk$Work.Status_8_orig),0,8)
+uk$Work.Status_9 <- ifelse(is.na(uk$Work.Status_9_orig),0,9)
+
+
+uk <- mutate(uk, working.status = Work.Status_1+
+                                   Work.Status_2+
+                                   Work.Status_3+
+                                   Work.Status_4+
+                                   Work.Status_5+
+                                   Work.Status_6+
+                                   Work.Status_7+
+                                   Work.Status_8+
+                                   Work.Status_9)
+# A participant selected two response options, leading to a sum of 12 (student and unemployed). 
+uk$working.status[uk$working.status==12] <- 7
+```
+
+```{r ita CLEAN work status}
+ita$Work.Status_1_orig <- ita$Work.Status_1
+ita$Work.Status_2_orig <- ita$Work.Status_2
+ita$Work.Status_3_orig <- ita$Work.Status_3
+ita$Work.Status_4_orig <- ita$Work.Status_4
+ita$Work.Status_5_orig <- ita$Work.Status_5
+ita$Work.Status_6_orig <- ita$Work.Status_6
+ita$Work.Status_7_orig <- ita$Work.Status_7
+ita$Work.Status_8_orig <- ita$Work.Status_8
+ita$Work.Status_9_orig <- ita$Work.Status_9
+
+ita$Work.Status_1 <- ifelse(is.na(ita$Work.Status_1_orig),0,1)
+ita$Work.Status_2 <- ifelse(is.na(ita$Work.Status_2_orig),0,2)
+ita$Work.Status_3 <- ifelse(is.na(ita$Work.Status_3_orig),0,3)
+ita$Work.Status_4 <- ifelse(is.na(ita$Work.Status_4_orig),0,4)
+ita$Work.Status_5 <- ifelse(is.na(ita$Work.Status_5_orig),0,5)
+ita$Work.Status_6 <- ifelse(is.na(ita$Work.Status_6_orig),0,6)
+ita$Work.Status_7 <- ifelse(is.na(ita$Work.Status_7_orig),0,7)
+ita$Work.Status_8 <- ifelse(is.na(ita$Work.Status_8_orig),0,8)
+ita$Work.Status_9 <- ifelse(is.na(ita$Work.Status_9_orig),0,9)
+
+
+ita <- mutate(ita, working.status = Work.Status_1+
+                                   Work.Status_2+
+                                   Work.Status_3+
+                                   Work.Status_4+
+                                   Work.Status_5+
+                                   Work.Status_6+
+                                   Work.Status_7+
+                                   Work.Status_8+
+                                   Work.Status_9)
+# A participant selected two response options, leading to a sum of 12 (student and unemployed). 
+ita$working.status[ita$working.status==12] <- 7
+```
+
+```{r za CLEAN work status}
+za$Work.Status_1_orig <- za$Work.Status_1
+za$Work.Status_2_orig <- za$Work.Status_2
+za$Work.Status_3_orig <- za$Work.Status_3
+za$Work.Status_4_orig <- za$Work.Status_4
+za$Work.Status_5_orig <- za$Work.Status_5
+za$Work.Status_6_orig <- za$Work.Status_6
+za$Work.Status_7_orig <- za$Work.Status_7
+za$Work.Status_8_orig <- za$Work.Status_8
+za$Work.Status_9_orig <- za$Work.Status_9
+
+za$Work.Status_1 <- ifelse(is.na(za$Work.Status_1_orig),0,1)
+za$Work.Status_2 <- ifelse(is.na(za$Work.Status_2_orig),0,2)
+za$Work.Status_3 <- ifelse(is.na(za$Work.Status_3_orig),0,3)
+za$Work.Status_4 <- ifelse(is.na(za$Work.Status_4_orig),0,4)
+za$Work.Status_5 <- ifelse(is.na(za$Work.Status_5_orig),0,5)
+za$Work.Status_6 <- ifelse(is.na(za$Work.Status_6_orig),0,6)
+za$Work.Status_7 <- ifelse(is.na(za$Work.Status_7_orig),0,7)
+za$Work.Status_8 <- ifelse(is.na(za$Work.Status_8_orig),0,8)
+za$Work.Status_9 <- ifelse(is.na(za$Work.Status_9_orig),0,9)
+
+
+za <- mutate(za, working.status = Work.Status_1+
+                                   Work.Status_2+
+                                   Work.Status_3+
+                                   Work.Status_4+
+                                   Work.Status_5+
+                                   Work.Status_6+
+                                   Work.Status_7+
+                                   Work.Status_8+
+                                   Work.Status_9)
+# A participant selected two response options, leading to a sum of 12 (student and unemployed). 
+za$working.status[za$working.status==12] <- 7
+```
+## Ethnicity  
+```{r LOWERING Ethicity}
+uk$Ethnicity <- tolower(uk$Ethnicity)
+ita$Ethnicity <- tolower(ita$Ethnicity)
+za$Ethnicity <- tolower(za$Ethnicity)
+```
+
+```{r uk RELEVEL ethnicity}
+# Black
+uk$Ethnicity[uk$Ethnicity=="black african"] <- "black"
+uk$Ethnicity[uk$Ethnicity=="mauritius"] <- "black"
+# Asian
+uk$Ethnicity[uk$Ethnicity=="british asian"] <- "asian"
+uk$Ethnicity[uk$Ethnicity=="chinese"] <- "asian"
+uk$Ethnicity[uk$Ethnicity=="pakistani"] <- "asian"
+# White
+uk$Ethnicity[uk$Ethnicity=="british"] <- "white"
+uk$Ethnicity[uk$Ethnicity=="british white"] <- "white"
+uk$Ethnicity[uk$Ethnicity=="caucasian"] <- "white"
+uk$Ethnicity[uk$Ethnicity=="caucasion white"] <- "white"
+uk$Ethnicity[uk$Ethnicity=="english"] <- "white"
+uk$Ethnicity[uk$Ethnicity=="european white"] <- "white"
+uk$Ethnicity[uk$Ethnicity=="scottish"] <- "white"
+uk$Ethnicity[uk$Ethnicity=="white britisg"] <- "white"
+uk$Ethnicity[uk$Ethnicity=="white british"] <- "white"
+uk$Ethnicity[uk$Ethnicity=="white englis"] <- "white"
+uk$Ethnicity[uk$Ethnicity=="white english"] <- "white"
+uk$Ethnicity[uk$Ethnicity=="white irish"] <- "white"
+uk$Ethnicity[uk$Ethnicity=="white scottish"] <- "white"
+uk$Ethnicity[uk$Ethnicity=="white, british"] <- "white"
+uk$Ethnicity[uk$Ethnicity=="white/british"] <- "white"
+uk$Ethnicity[uk$Ethnicity=="white/scottish"] <- "white"
+uk$Ethnicity[uk$Ethnicity=="whote"] <- "white"
+# Mixed
+uk$Ethnicity[uk$Ethnicity=="mixed - asian and white"] <- "mixed"
+uk$Ethnicity[uk$Ethnicity=="mixed/mongrel"] <- "mixed"
+uk$Ethnicity[uk$Ethnicity=="white asian"] <- "mixed"
+```
+
+```{r ita RELEVEL ethnicity}
+# Black
+ita$Ethnicity[ita$Ethnicity=="black/ african"] <- "black"
+# Asian
+ita$Ethnicity[ita$Ethnicity=="arab"] <- "asian"
+# White
+ita$Ethnicity[ita$Ethnicity=="bianco"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="caucaisan"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="caucasian"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="caucasian - white"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="caucasian and italian"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="caucasian/white"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="caucasic"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="caucasican"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="causasian"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="european"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="italian"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="italian caucasian"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="italian, white"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="italiana"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="italy/white"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="mediterranean"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="mediterranean (italy - white)"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="romanian"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="whit4"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="white (caucasian)"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="white / caucasian"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="white caucasian"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="white european"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="white italian"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="white south european"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="white-european"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="white, european"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="white/caucasian"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="white/italian"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="white/slavic"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="white13"] <- "white"
+ita$Ethnicity[ita$Ethnicity=="caucasica"] <- "white"
+# Mixed
+ita$Ethnicity[ita$Ethnicity=="japanese and italian"] <- "mixed"
+```
+
+```{r za RELEVEL ethnicity}
+# Black
+za$Ethnicity[za$Ethnicity=="afrian"] <- "black"
+za$Ethnicity[za$Ethnicity=="african"] <- "black"
+za$Ethnicity[za$Ethnicity=="african / black"] <- "black"
+za$Ethnicity[za$Ethnicity=="african black"] <- "black"
+za$Ethnicity[za$Ethnicity=="african/black"] <- "black"
+za$Ethnicity[za$Ethnicity=="black (african)"] <- "black"
+za$Ethnicity[za$Ethnicity=="black african"] <- "black"
+za$Ethnicity[za$Ethnicity=="black san"] <- "black"
+za$Ethnicity[za$Ethnicity=="black south africa"] <- "black"
+za$Ethnicity[za$Ethnicity=="black south african"] <- "black"
+za$Ethnicity[za$Ethnicity=="black-african"] <- "black"
+za$Ethnicity[za$Ethnicity=="black/ african"] <- "black"
+za$Ethnicity[za$Ethnicity=="black/african"] <- "black"
+za$Ethnicity[za$Ethnicity=="black/zulu"] <- "black"
+za$Ethnicity[za$Ethnicity=="coloured"] <- "black"
+za$Ethnicity[za$Ethnicity=="south african"] <- "black"
+za$Ethnicity[za$Ethnicity=="xhosa"] <- "black"
+za$Ethnicity[za$Ethnicity=="zulu"] <- "black"
+# White
+za$Ethnicity[za$Ethnicity=="caucasian"] <- "white"
+za$Ethnicity[za$Ethnicity=="white & jewish"] <- "white"
+# Asian
+za$Ethnicity[za$Ethnicity=="indian"] <- "asian"
+# Mixed
+za$Ethnicity[za$Ethnicity=="mix race"] <- "mixed"
+za$Ethnicity[za$Ethnicity=="mixed (south african coloured)"] <- "mixed"
+```
+# Causal attributions for economic inequality between countries  
+## Items descriptives  
+```{r  DESCR ccias items}
+ccias.items <- uk[,c("country","CCIAS_01","CCIAS_02","CCIAS_03","CCIAS_04","CCIAS_05","CCIAS_06","CCIAS_07","CCIAS_08","CCIAS_09","CCIAS_10","CCIAS_11","CCIAS_12","CCIAS_13","CCIAS_14","CCIAS_15","CCIAS_16","CCIAS_18","CCIAS_19")]
+ccias.items <- rbind(ccias.items,ita[,c("country","CCIAS_01","CCIAS_02","CCIAS_03","CCIAS_04","CCIAS_05","CCIAS_06","CCIAS_07","CCIAS_08","CCIAS_09","CCIAS_10","CCIAS_11","CCIAS_12","CCIAS_13","CCIAS_14","CCIAS_15","CCIAS_16","CCIAS_18","CCIAS_19")])
+ccias.items <- rbind(ccias.items,za[,c("country","CCIAS_01","CCIAS_02","CCIAS_03","CCIAS_04","CCIAS_05","CCIAS_06","CCIAS_07","CCIAS_08","CCIAS_09","CCIAS_10","CCIAS_11","CCIAS_12","CCIAS_13","CCIAS_14","CCIAS_15","CCIAS_16","CCIAS_18","CCIAS_19")])
+```
+
+## Confirmatory Factor Analysis {.tabset}  
+```{r define measurement model}
+ccias.model.all <- 'rich =~ CCIAS_01+
+                       CCIAS_02+
+                       CCIAS_03+
+                       CCIAS_04+
+                       CCIAS_05+
+                       CCIAS_06+
+                       CCIAS_07+
+                       CCIAS_08+
+                       CCIAS_09
+               poor =~ CCIAS_10+
+                       CCIAS_11+
+                       CCIAS_12+
+                       CCIAS_13+
+                       CCIAS_14+
+                       CCIAS_15
+              fatal =~ CCIAS_16+
+                       CCIAS_17+
+                       CCIAS_18+
+                       CCIAS_19'
+ccias.model <- 'rich =~ CCIAS_01+
+                       CCIAS_02+
+                       CCIAS_03+
+                       CCIAS_04+
+                       CCIAS_05+
+                       CCIAS_06+
+                       CCIAS_07+
+                       CCIAS_08+
+                       CCIAS_09
+               poor =~ CCIAS_10+
+                       CCIAS_11+
+                       CCIAS_12+
+                       CCIAS_13+
+                       CCIAS_14+
+                       CCIAS_15
+              fatal =~ CCIAS_16+
+                       CCIAS_18+
+                       CCIAS_19'
+```
+
+###################################################################################################
+###################################################################################################
+###################################################################################################
+
+### UK  
+```{r uk CFA ccias}
+set.seed(1234)
+cfa.ccias.uk <- cfa(ccias.model,
+               data = uk,
+               std.lv=TRUE,
+               estimator = "ML")
+```
+### Italy  
+```{r ita CFA ccias}
+set.seed(1234)
+cfa.ccias.ita <- cfa(ccias.model,
+               data = ita,
+               std.lv=TRUE,
+               estimator = "ML")
+```
+### South Africa  
+```{r}
+set.seed(1234)
+cfa.ccias.za <- cfa(ccias.model,
+               data = za,
+               std.lv=TRUE,
+               estimator = "ML")
+```
+
+###################################################################################################
+###################################################################################################
+###################################################################################################
+
+## Multigroup CFA  
+```{r}
+ccias <- rbind(uk[,c("country","CCIAS_01","CCIAS_02","CCIAS_03","CCIAS_04","CCIAS_05","CCIAS_06","CCIAS_07","CCIAS_08","CCIAS_09","CCIAS_10","CCIAS_11","CCIAS_12","CCIAS_13","CCIAS_14","CCIAS_15","CCIAS_16","CCIAS_18","CCIAS_19")],
+               ita[,c("country","CCIAS_01","CCIAS_02","CCIAS_03","CCIAS_04","CCIAS_05","CCIAS_06","CCIAS_07","CCIAS_08","CCIAS_09","CCIAS_10","CCIAS_11","CCIAS_12","CCIAS_13","CCIAS_14","CCIAS_15","CCIAS_16","CCIAS_18","CCIAS_19")])
+ccias <- rbind(ccias,za[,c("country","CCIAS_01","CCIAS_02","CCIAS_03","CCIAS_04","CCIAS_05","CCIAS_06","CCIAS_07","CCIAS_08","CCIAS_09","CCIAS_10","CCIAS_11","CCIAS_12","CCIAS_13","CCIAS_14","CCIAS_15","CCIAS_16","CCIAS_18","CCIAS_19")])
+```
+
+## Compute overall scores  
+```{r COMPUTE SCORE ccias}
+# UK
+uk <- mutate(uk,ccias.rich=(CCIAS_01+
+                       CCIAS_02+
+                       CCIAS_03+
+                       CCIAS_04+
+                       CCIAS_05+
+                       CCIAS_06+
+                       CCIAS_07+
+                       CCIAS_08+
+                       CCIAS_09)/9)
+uk <- mutate(uk,ccias.poor=(CCIAS_10+
+                       CCIAS_11+
+                       CCIAS_12+
+                       CCIAS_13+
+                       CCIAS_14+
+                       CCIAS_15)/6)
+uk <- mutate(uk,ccias.fatal=(CCIAS_16+
+                       CCIAS_18+
+                       CCIAS_19)/3)
+
+# ita
+ita <- mutate(ita,ccias.rich=(CCIAS_01+
+                       CCIAS_02+
+                       CCIAS_03+
+                       CCIAS_04+
+                       CCIAS_05+
+                       CCIAS_06+
+                       CCIAS_07+
+                       CCIAS_08+
+                       CCIAS_09)/9)
+ita <- mutate(ita,ccias.poor=(CCIAS_10+
+                       CCIAS_11+
+                       CCIAS_12+
+                       CCIAS_13+
+                       CCIAS_14+
+                       CCIAS_15)/6)
+ita <- mutate(ita,ccias.fatal=(CCIAS_16+
+                       CCIAS_18+
+                       CCIAS_19)/3)
+
+# za
+za <- mutate(za,ccias.rich=(CCIAS_01+
+                       CCIAS_02+
+                       CCIAS_03+
+                       CCIAS_04+
+                       CCIAS_05+
+                       CCIAS_06+
+                       CCIAS_07+
+                       CCIAS_08+
+                       CCIAS_09)/9)
+za <- mutate(za,ccias.poor=(CCIAS_10+
+                       CCIAS_11+
+                       CCIAS_12+
+                       CCIAS_13+
+                       CCIAS_14+
+                       CCIAS_15)/6)
+za <- mutate(za,ccias.fatal=(CCIAS_16+
+                       CCIAS_18+
+                       CCIAS_19)/3)
+```
+
+# Descriptive statistics  
+
+```{r create a single dataframe of socio-demographic}
+
+var.descr<- uk[,c("country","ccias.rich","ccias.poor","ccias.fatal","Between.Inequality.Wide","Between.Redistribution","Between.Migration","Between.Fairness","Moralization","Moral.Outrage","Position.Own.Country_fac","General.Trust.Inst","trust.institution","Horizontal.Trust","zero.sum","meritocracy","social.dominance","eco.system.just","identif.country","identif.world","subjective.ses","Pol.Orientation","Gender_fac","Age","Education","working.status_fac","Ethnicity")]
+var.descr <- rbind(var.descr,ita[,c("country","ccias.rich","ccias.poor","ccias.fatal","Between.Inequality.Wide","Between.Redistribution","Between.Migration","Between.Fairness","Moralization","Moral.Outrage","Position.Own.Country_fac","General.Trust.Inst","trust.institution","Horizontal.Trust","zero.sum","meritocracy","social.dominance","eco.system.just","identif.country","identif.world","subjective.ses","Pol.Orientation","Gender_fac","Age","Education","working.status_fac","Ethnicity")])
+var.descr <- rbind(var.descr,za[,c("country","ccias.rich","ccias.poor","ccias.fatal","Between.Inequality.Wide","Between.Redistribution","Between.Migration","Between.Fairness","Moralization","Moral.Outrage","Position.Own.Country_fac","General.Trust.Inst","trust.institution","Horizontal.Trust","zero.sum","meritocracy","social.dominance","eco.system.just","identif.country","identif.world","subjective.ses","Pol.Orientation","Gender_fac","Age","Education","working.status_fac","Ethnicity")])
+
+```
+
+```{r make descriptive table}
+
+var.labels <- c(ccias.rich ~ "Blame rich countries",
+                ccias.poor ~ "Blame poor countries",
+                ccias.fatal ~ "Blame fate",
+                Between.Inequality.Wide ~ "Inequality wideness",
+              Between.Redistribution ~ "Redistribution",
+              Between.Migration ~ "Migration",
+              Between.Fairness  ~ "Fairness",
+              Moral.Outrage ~ "Moral outrage",
+              meritocracy ~ "Meritocracy",
+              social.dominance ~ "Social Dominance Orientation",
+              eco.system.just ~ "Economic System Justification",
+              zero.sum ~ "Zero sum beliefs",
+              Position.Own.Country_fac ~ "Country SES",
+              Pol.Orientation ~ "Political orientation",
+              identif.country ~ "Identification Country",
+              identif.world ~ "Identification World",
+              subjective.ses ~ "Subjective SES",
+              General.Trust.Inst ~ "Need International Inst.",
+              trust.institution~ "Trust International Inst.",
+              Horizontal.Trust ~ "Horizontal Trust",
+              Gender_fac ~ "Gender",
+              working.status_fac ~ "Working status")
+```
+# Correlational pattern {.tabset}  
+
+###################################################################################################
+###################################################################################################
+###################################################################################################
+
+## Italy  
+
+```{r ita CORREL gias and inequality, fig.height=10,fig.width=10}
+cor1df <- subset(ita, select = c(ccias.rich,ccias.poor,ccias.fatal,Between.Inequality.Wide,Between.Redistribution,Between.Migration,Between.Fairness,Moralization,Moral.Outrage,Position.Own.Country,General.Trust.Inst,trust.institution,Horizontal.Trust,zero.sum,meritocracy,social.dominance,eco.system.just,identif.country,identif.world,subjective.ses,Pol.Orientation,Age,Gender,Education))
+
+cor1 <- data.frame()
+columns <- colnames(cor1df)
+for (i in 1:(ncol(cor1df) - 1)) {
+  for (j in (i + 1):ncol(cor1df)){
+    col1 <- columns[i]
+    col2 <- columns[j]
+    
+    test_result <- tidy(cor.test(cor1df[[col1]], cor1df[[col2]]))
+    
+    cor1 <- bind_rows(cor1, test_result)
+  }
+}
+```
+
+## UK  
+
+```{r uk CORREL gias and inequality, fig.height=10,fig.width=10}
+cor2df <- subset(uk, select = c(ccias.rich,ccias.poor,ccias.fatal,Between.Inequality.Wide,Between.Redistribution,Between.Migration,Between.Fairness,Moralization,Moral.Outrage,Position.Own.Country,General.Trust.Inst,trust.institution,Horizontal.Trust,zero.sum,meritocracy,social.dominance,eco.system.just,identif.country,identif.world,subjective.ses,Pol.Orientation,Age,Gender,Education))
+
+cor2 <- data.frame()
+columns <- colnames(cor2df)
+for (i in 1:(ncol(cor2df) - 1)) {
+  for (j in (i + 1):ncol(cor2df)){
+    col1 <- columns[i]
+    col2 <- columns[j]
+    
+    test_result <- tidy(cor.test(cor2df[[col1]], cor2df[[col2]]))
+    
+    cor2 <- bind_rows(cor2, test_result)
+  }
+}
+```
+## South Africa  
+
+```{r za CORREL gias and inequality, fig.height=10,fig.width=10}
+cor3df <- subset(za, select = c(ccias.rich,ccias.poor,ccias.fatal,Between.Inequality.Wide,Between.Redistribution,Between.Migration,Between.Fairness,Moralization,Moral.Outrage,Position.Own.Country,General.Trust.Inst,trust.institution,Horizontal.Trust,zero.sum,meritocracy,social.dominance,eco.system.just,identif.country,identif.world,subjective.ses,Pol.Orientation,Age,Gender,Education))
+
+cor3 <- data.frame()
+columns <- colnames(cor3df)
+for (i in 1:(ncol(cor3df) - 1)) {
+  for (j in (i + 1):ncol(cor3df)){
+    col1 <- columns[i]
+    col2 <- columns[j]
+    
+    test_result <- tidy(cor.test(cor3df[[col1]], cor3df[[col2]]))
+    
+    cor3 <- bind_rows(cor3, test_result)
+  }
+}
+```
+###################################################################################################
+###################################################################################################
+###################################################################################################
+
+# Regression analysis  
+```{r EXTRACT data}
+data <- rbind(uk[,c("country","ccias.rich","ccias.poor","ccias.fatal","Between.Inequality.Wide","Between.Redistribution","Between.Migration","Between.Unfairness","Moralization","Moral.Outrage","Gender_fac","Age")],ita[,c("country","ccias.rich","ccias.poor","ccias.fatal","Between.Inequality.Wide","Between.Redistribution","Between.Migration","Between.Unfairness","Moralization","Moral.Outrage","Gender_fac","Age")])
+
+data <- rbind(data[,c("country","ccias.rich","ccias.poor","ccias.fatal","Between.Inequality.Wide","Between.Redistribution","Between.Migration","Between.Unfairness","Moralization","Moral.Outrage","Gender_fac","Age")],za[,c("country","ccias.rich","ccias.poor","ccias.fatal","Between.Inequality.Wide","Between.Redistribution","Between.Migration","Between.Unfairness","Moralization","Moral.Outrage","Gender_fac","Age")])
+
+```
+```{r RELEVEL country}
+data$country <- relevel(factor(data$country),ref = "za")
+data$Gender_fac <- relevel(data$Gender_fac,ref = "female")
+
+```
+
+###################################################################################################
+###################################################################################################
+###################################################################################################
+
+```{r regression Between.Inequality.Wide}
+mod.wide <- lm(Between.Inequality.Wide~ccias.rich+ccias.poor+ccias.fatal+country, data = data)
+mod.wide.demo <- lm(Between.Inequality.Wide~ccias.rich+ccias.poor+ccias.fatal+country+Gender_fac+Age, data = data)
+
+```
+```{r regression Between.Redistribution}
+mod.redr <- lm(Between.Redistribution~ccias.rich+ccias.poor+ccias.fatal+country, data = data)
+mod.redr.demo <- lm(Between.Redistribution~ccias.rich+ccias.poor+ccias.fatal+country+Gender_fac+Age, data = data)
+
+```
+
+```{r regression Between.Migration}
+mod.migr <- lm(Between.Migration~ccias.rich+ccias.poor+ccias.fatal+country, data = data)
+mod.migr.demo <- lm(Between.Migration~ccias.rich+ccias.poor+ccias.fatal+country+Gender_fac+Age, data = data)
+
+```
+
+```{r regression Between.Unfairness}
+mod.unfair <- lm(Between.Unfairness~ccias.rich+ccias.poor+ccias.fatal+country, data = data)
+mod.unfair.demo <- lm(Between.Unfairness~ccias.rich+ccias.poor+ccias.fatal+country+Gender_fac+Age, data = data)
+
+```
+
+```{r regression Moralization}
+mod.moral <- lm(Moralization~ccias.rich+ccias.poor+ccias.fatal+country, data = data)
+mod.moral.demo <- lm(Moralization~ccias.rich+ccias.poor+ccias.fatal+country+Gender_fac+Age, data = data)
+
+```
+
+```{r regression Moral.Outrage}
+mod.rage <- lm(Moral.Outrage~ccias.rich+ccias.poor+ccias.fatal+country, data = data)
+mod.rage.demo <- lm(Moral.Outrage~ccias.rich+ccias.poor+ccias.fatal+country+Gender_fac+Age, data = data)
+
+```
+```{r output}
+results = bind_rows(
+  lm1 = tidy(mod.migr),
+  lm2 = tidy(mod.migr.demo),
+  lm3 = tidy(mod.moral),
+  lm4 = tidy(mod.moral.demo),
+  lm5 = tidy(mod.rage),
+  lm6 = tidy(mod.rage.demo),
+  lm7 = tidy(mod.redr),
+  lm8 = tidy(mod.redr.demo),
+  lm9 = tidy(mod.unfair),
+  lm10 = tidy(mod.unfair.demo),
+  lm11 = tidy(mod.wide),
+  lm12 = tidy(mod.wide.demo),
+ 
+  cor.test1 = cor1,
+  cor.test2 = cor2,
+  cor.test2 = cor2,
+  .id = "model"
+)
+
+write_csv(results, "C:/Users/srtui/Downloads/Master Thesis/SocialMobility/Vezolli_2/results/Vezolli_2_results_original.csv")
+```
